@@ -16,13 +16,16 @@ const server = http.createServer((req, res) => {
   });
 });
 const wss = new WebSocketServer({server});
+let latestState = null;
 wss.on('connection', ws => {
   console.log('Board browser connected; total browsers:', wss.clients.size);
+  if (latestState) ws.send(JSON.stringify({type:'state',s:latestState}));
   ws.on('message', message => {
     // Relay state from the controls page to the overlay page.
     let parsed;
     try { parsed = JSON.parse(message.toString()); } catch { return; }
-    if (parsed?.type !== 'state') return;
+    if (parsed?.type !== 'state' || !parsed.s || typeof parsed.s !== 'object') return;
+    latestState = parsed.s;
     for (const client of wss.clients) if (client !== ws && client.readyState === WebSocket.OPEN) client.send(JSON.stringify(parsed));
   });
 });

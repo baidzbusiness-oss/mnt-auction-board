@@ -226,10 +226,10 @@ if(!overlay){
   w.onopen=function(){$('wst').textContent='Connected ✓ — gifts will go on the board'};
   w.onclose=function(){$('wst').textContent='Disconnected'};
   w.onerror=function(){$('wst').textContent='Could not connect. Is your connector running?'};
-  w.onmessage=function(m){try{var d=JSON.parse(m.data);if(d.avatar&&/^data:image\//.test(d.avatar)&&d.user)S.av[d.user]=d.avatar;bid(d.user,d.coins)}catch(e){}}}catch(e){$('wst').textContent='Bad address'}};
+  w.onmessage=function(m){try{var d=JSON.parse(m.data);if(d.type==='state'){acceptState(d.s);render(S);return}if(d.avatar&&/^data:image\//.test(d.avatar)&&d.user)S.av[d.user]=d.avatar;bid(d.user,d.coins)}catch(e){}}}catch(e){$('wst').textContent='Bad address'}};
  try{var o=JSON.parse(localStorage.getItem('ab'));if(o&&o.bids){S=Object.assign({},S,o);if(/LIVE AUCTION|BETTERTOK/i.test(S.sub||''))S.sub='';Object.keys(S.bids||{}).forEach(function(k){if(k.toLowerCase()==='gg')delete S.bids[k]});if(S.phase==='main'||S.phase==='snipe'){if(S.until<Date.now())finish()}$('snp').value=S.snipe;$('dur').value=S.dur||300;$('item').value=S.item||'';$('ttl').value=S.title||'';$('sub').value=S.sub||'';$('minOn').checked=S.minOn;$('min').value=S.min}}catch(e){}
 }else if(ch){ch.onmessage=function(e){acceptState(e.data);render(S)};try{var o2=JSON.parse(localStorage.getItem('ab'));if(o2)S=Object.assign({},S,o2)}catch(e){}}
-push();
+render(S);
 if(overlay&&/^https?:$/.test(location.protocol)){var w2=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);w2.onmessage=function(m){try{var d=JSON.parse(m.data);if(d.type==='state'){acceptState(d.s);render(S)}}catch(e){}};w2.onclose=function(){setTimeout(function(){location.reload()},3000)}}
-if(!overlay&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){$('ws').value='ws://'+location.host;$('conn').onclick()}
+if(!overlay&&/^https?:$/.test(location.protocol)){$('ws').value=(location.protocol==='https:'?'wss://':'ws://')+location.host;$('conn').onclick()}
 </script></body></html>
