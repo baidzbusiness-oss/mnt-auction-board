@@ -156,16 +156,13 @@ function sorted(s){return Object.keys(s.bids).map(function(k){return[k,s.bids[k]
 var lastH='';function setBoard(h){if(h!==lastH){lastH=h;$('board').innerHTML=h}}
 function avs(n,s){var a=s.av&&s.av[n];return a?'background:url('+a+') center/cover no-repeat':'background:'+col(n)}
 function render(s){
- var l=sorted(s),h='',sn=s.phase==='snipe',dn=s.phase==='done';
+ var l=sorted(s),h='',sn=(s.phase==='main'||s.phase==='snipe')&&Number(s.snipe)>0&&Number(s.left)>0&&Number(s.left)<=Number(s.snipe),dn=s.phase==='done';
  var bgs=' style="background-image:linear-gradient(rgba(0,0,0,.28),rgba(0,0,0,.5)),url('+(s.bg||DEF_BG)+');background-size:cover;background-position:center"';
  if(dn&&s.showWin&&l.length){var cc=['#ffd23f','#ff2d55','#a855f7','#22d3ee','#ff5ca8','#7c6cf0'],cf='';
   for(var k=0;k<48;k++){var z=6+Math.random()*5,r=Math.random()<.5;cf+='<i style="left:'+(Math.random()*100)+'%;width:'+z+'px;height:'+(r?z*1.6:z)+'px;border-radius:'+(r?'1px':'50%')+';background:'+cc[k%6]+';animation-duration:'+(2.2+Math.random()*2)+'s;animation-delay:-'+(Math.random()*3)+'s"></i>'}
   var wn=l[0][0];
   setBoard('<div class="panel2 win2"'+bgs+'><div class="cfw">'+cf+'</div><div class="wn"><div class="wt">WINNER!</div><div class="wav" style="'+avs(wn,s)+'">'+(s.av&&s.av[wn]?'':esc(wn[0].toUpperCase()))+'</div><div class="wnm" style="font-size:'+(wn.length>14?24:wn.length>10?30:36)+'px">'+esc(wn)+'</div><div class="wam">'+l[0][1].toLocaleString('en-US')+'<span class="bigcoin"></span></div></div></div>');
   return}
- if(!dn)h+='<div class="pill it"><span class="sun">✷</span>'+esc(s.item)+'</div>';
- if(!dn)h+=s.minOn?'<div class="pill mn has"><span>MIN :</span><em class="chip">'+s.min+'<span class="coin"></span></em></div>':'<div class="pill mn"><i>✓</i><span>NO MINIMUM</span></div>';
- if(!dn)h+='<div class="pill sn2"><span class="sh"></span><span>SNIPE DELAY</span><em class="chip">'+s.snipe+'S</em></div>';
  h+='<div class="panel2"'+bgs+'><div class="ban"><div class="bt"><i>✷</i>'+esc(s.title)+'<i>✷</i></div>'+(s.sub?'<div class="bs">✦ '+esc(s.sub)+' ✦</div>':'')+'</div>';
  var low=(s.phase==='main'||sn)&&s.left<=10?' low':'';
  if(sn)h+='<div class="tm sn'+low+'"><span>SNIPE DELAY</span><span>'+fmt(s.left)+'</span></div>';
