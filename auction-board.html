@@ -180,10 +180,13 @@ function render(s){
 function acceptState(next){
  if(!next||typeof next!=='object')return;
  // Never let a delayed state message move a running auction backwards.
- if(S.phase==='snipe'&&next.phase==='main')return;
- if(S.phase==='done'&&(next.phase==='main'||next.phase==='snipe'))return;
+ var newAuction=Number(next.auctionId||0)>Number(S.auctionId||0);
+ if(!newAuction){
+  if(S.phase==='snipe'&&next.phase==='main')return;
+  if(S.phase==='done'&&(next.phase==='main'||next.phase==='snipe'))return;
+ }
  // Within the same phase, incoming updates cannot extend the deadline.
- if(S.phase===next.phase&&(S.phase==='main'||S.phase==='snipe')){
+ if(!newAuction&&S.phase===next.phase&&(S.phase==='main'||S.phase==='snipe')){
   var oldEnd=Number(S.until),newEnd=Number(next.until);
   if(Number.isFinite(oldEnd)&&oldEnd>0){
    next.until=Number.isFinite(newEnd)&&newEnd>0?Math.min(oldEnd,newEnd):oldEnd;
@@ -205,7 +208,11 @@ function finish(){
  S.tie=null;S.phase='done';S.left=0;S.doneAt=Date.now();S.showWin=l.length>0;S.note=l.length?'':'No bids'}
 setInterval(function(){
  if(!overlay&&S.phase==='done'&&S.showWin&&Date.now()-S.doneAt>4500){S.showWin=false;push();return}
- if(overlay||(S.phase!=='main'&&S.phase!=='snipe'))return;
+ if(overlay){
+  if(S.phase==='main'||S.phase==='snipe'){S.left=Math.max(0,Math.ceil((Number(S.until)-Date.now())/1000));render(S)}
+  return;
+ }
+ if(S.phase!=='main'&&S.phase!=='snipe')return;
  var n=Math.max(0,Math.ceil((S.until-Date.now())/1000));
  if(n<=0&&S.phase==='main'){
   var delay=Math.max(0,Math.floor(Number(S.snipe)||0));
@@ -220,7 +227,7 @@ setInterval(function(){
 if(!overlay){
  $('bgf').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var k=Math.min(1,560/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);S.bg=c.toDataURL('image/jpeg',.85);push()};im.src=r.result};r.readAsDataURL(f)};
  $('bgr').onclick=function(){S.bg='';push()};
- $('start').onclick=function(){S.snipe=+$('snp').value||0;S.minOn=$('minOn').checked;S.min=+$('min').value||0;S.dur=+$('dur').value||300;S.item=$('item').value;S.title=$('ttl').value;S.sub=$('sub').value;S.bids={};S.note='';S.tie=null;S.phase='main';S.until=Date.now()+(+$('dur').value||300)*1000;S.left=+$('dur').value;push()};
+ $('start').onclick=function(){S.snipe=+$('snp').value||0;S.minOn=$('minOn').checked;S.min=+$('min').value||0;S.dur=+$('dur').value||300;S.item=$('item').value;S.title=$('ttl').value;S.sub=$('sub').value;S.bids={};S.note='';S.tie=null;S.phase='main';S.auctionId=Math.max(Date.now(),Number(S.auctionId||0)+1);S.until=Date.now()+(+$('dur').value||300)*1000;S.left=+$('dur').value;push()};
  $('add30').onclick=function(){/* Timer extensions disabled: countdown only */};$('add30').disabled=true;$('add30').title='Disabled: countdown only';
  $('end').onclick=function(){if(S.phase==='main'||S.phase==='snipe'){S.phase='done';finish();push()}};
  $('reset').onclick=function(){S.bids={};S.phase='idle';S.note='';S.tie=null;S.left=0;push()};
