@@ -156,7 +156,7 @@ function sorted(s){return Object.keys(s.bids).map(function(k){return[k,s.bids[k]
 var lastH='';function setBoard(h){if(h!==lastH){lastH=h;$('board').innerHTML=h}}
 function avs(n,s){var a=s.av&&s.av[n];return a?'background:url('+a+') center/cover no-repeat':'background:'+col(n)}
 function render(s){
- var l=sorted(s),h='',sn=(s.phase==='main'||s.phase==='snipe')&&Number(s.snipe)>0&&Number(s.left)>0&&Number(s.left)<=Number(s.snipe),dn=s.phase==='done';
+ var l=sorted(s),h='',sn=s.phase==='snipe',dn=s.phase==='done';
  var bgs=' style="background-image:linear-gradient(rgba(0,0,0,.28),rgba(0,0,0,.5)),url('+(s.bg||DEF_BG)+');background-size:cover;background-position:center"';
  if(dn&&s.showWin&&l.length){var cc=['#ffd23f','#ff2d55','#a855f7','#22d3ee','#ff5ca8','#7c6cf0'],cf='';
   for(var k=0;k<48;k++){var z=6+Math.random()*5,r=Math.random()<.5;cf+='<i style="left:'+(Math.random()*100)+'%;width:'+z+'px;height:'+(r?z*1.6:z)+'px;border-radius:'+(r?'1px':'50%')+';background:'+cc[k%6]+';animation-duration:'+(2.2+Math.random()*2)+'s;animation-delay:-'+(Math.random()*3)+'s"></i>'}
@@ -179,7 +179,11 @@ function render(s){
 // A running auction has a fixed deadline. Incoming state must never extend it.
 function acceptState(next){
  if(!next||typeof next!=='object')return;
- if((S.phase==='main'||S.phase==='snipe')&&(next.phase==='main'||next.phase==='snipe')){
+ // Never let a delayed state message move a running auction backwards.
+ if(S.phase==='snipe'&&next.phase==='main')return;
+ if(S.phase==='done'&&(next.phase==='main'||next.phase==='snipe'))return;
+ // Within the same phase, incoming updates cannot extend the deadline.
+ if(S.phase===next.phase&&(S.phase==='main'||S.phase==='snipe')){
   var oldEnd=Number(S.until),newEnd=Number(next.until);
   if(Number.isFinite(oldEnd)&&oldEnd>0){
    next.until=Number.isFinite(newEnd)&&newEnd>0?Math.min(oldEnd,newEnd):oldEnd;
@@ -203,8 +207,16 @@ setInterval(function(){
  if(!overlay&&S.phase==='done'&&S.showWin&&Date.now()-S.doneAt>4500){S.showWin=false;push();return}
  if(overlay||(S.phase!=='main'&&S.phase!=='snipe'))return;
  var n=Math.max(0,Math.ceil((S.until-Date.now())/1000));
- if(n<=0){finish()}
- S.left=S.phase==='done'?0:Math.min(Number.isFinite(S.left)&&S.left>0?S.left:n,n);push()},250);
+ if(n<=0&&S.phase==='main'){
+  var delay=Math.max(0,Math.floor(Number(S.snipe)||0));
+  if(delay>0){
+   // Start snipe only after main deadline. Never add time to an active phase.
+   S.phase='snipe';S.until=Date.now()+delay*1000;S.left=delay;n=delay;
+  }else{finish()}
+ }else if(n<=0&&S.phase==='snipe'){finish()}
+ if(S.phase!=='done')S.left=Math.min(Number.isFinite(S.left)&&S.left>0?S.left:n,n);
+ else S.left=0;
+ push()},250);
 if(!overlay){
  $('bgf').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var k=Math.min(1,560/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);S.bg=c.toDataURL('image/jpeg',.85);push()};im.src=r.result};r.readAsDataURL(f)};
  $('bgr').onclick=function(){S.bg='';push()};
@@ -224,7 +236,7 @@ if(!overlay){
   w.onclose=function(){$('wst').textContent='Disconnected'};
   w.onerror=function(){$('wst').textContent='Could not connect. Is your connector running?'};
   w.onmessage=function(m){try{var d=JSON.parse(m.data);if(d.type==='state'){acceptState(d.s);render(S);return}if(d.avatar&&/^data:image\//.test(d.avatar)&&d.user)S.av[d.user]=d.avatar;bid(d.user,d.coins)}catch(e){}}}catch(e){$('wst').textContent='Bad address'}};
- try{var o=JSON.parse(localStorage.getItem('ab'));if(o&&o.bids){S=Object.assign({},S,o);if(/LIVE AUCTION|BETTERTOK/i.test(S.sub||''))S.sub='';Object.keys(S.bids||{}).forEach(function(k){if(k.toLowerCase()==='gg')delete S.bids[k]});if(S.phase==='main'||S.phase==='snipe'){if(S.until<Date.now())finish()}$('snp').value=S.snipe;$('dur').value=S.dur||300;$('item').value=S.item||'';$('ttl').value=S.title||'';$('sub').value=S.sub||'';$('minOn').checked=S.minOn;$('min').value=S.min}}catch(e){}
+ try{var o=JSON.parse(localStorage.getItem('ab'));if(o&&o.bids){S=Object.assign({},S,o);if(/LIVE AUCTION|BETTERTOK/i.test(S.sub||''))S.sub='';Object.keys(S.bids||{}).forEach(function(k){if(k.toLowerCase()==='gg')delete S.bids[k]});if(S.phase==='main'&&S.until<Date.now()){var d=Math.max(0,Math.floor(Number(S.snipe)||0)),elapsed=Date.now()-S.until;if(d>0&&elapsed<d*1000){S.phase='snipe';S.until+=d*1000;S.left=Math.max(0,Math.ceil((S.until-Date.now())/1000))}else finish()}else if(S.phase==='snipe'&&S.until<Date.now())finish()$('snp').value=S.snipe;$('dur').value=S.dur||300;$('item').value=S.item||'';$('ttl').value=S.title||'';$('sub').value=S.sub||'';$('minOn').checked=S.minOn;$('min').value=S.min}}catch(e){}
 }else if(ch){ch.onmessage=function(e){acceptState(e.data);render(S)};try{var o2=JSON.parse(localStorage.getItem('ab'));if(o2)S=Object.assign({},S,o2)}catch(e){}}
 render(S);
 if(overlay&&/^https?:$/.test(location.protocol)){var w2=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);w2.onmessage=function(m){try{var d=JSON.parse(m.data);if(d.type==='state'){acceptState(d.s);render(S)}}catch(e){}};w2.onclose=function(){setTimeout(function(){location.reload()},3000)}}
